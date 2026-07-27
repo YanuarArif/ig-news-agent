@@ -2,7 +2,7 @@ python-dotenv
 pyyaml
 feedparser
 rapidfuzz
-anthropic
+openai
 sqlalchemy
 psycopg2-binary
 alembic
