@@ -1,0 +1,17 @@
+name = "cf-image-gen"
+main = "index.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# Optional: Custom domain (configure di Cloudflare dashboard)
+# routes = [
+#   { pattern = "api.yourdomain.com/cf-image-gen/*", zone_name = "yourdomain.com" }
+# ]
+
+# Environment variables (set via wrangler secret put atau dashboard)
+# [vars]
+# ENVIRONMENT = "production"

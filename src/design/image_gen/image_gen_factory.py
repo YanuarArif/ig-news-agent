@@ -15,8 +15,11 @@ def get_image_gen() -> BaseImageGen:
     elif provider == "stability":
         from src.design.image_gen.stability_client import StabilityImageGen
         return StabilityImageGen()
+    elif provider == "cloudflare_workers":
+        from src.design.image_gen.cloudflare_workers_gen import CloudflareWorkersImageGen
+        return CloudflareWorkersImageGen()
     else:
         raise ValueError(
             f"IMAGE_GEN_PROVIDER tidak dikenal: '{provider}'. "
-            "Gunakan salah satu: mock | stability"
+            "Gunakan salah satu: mock | stability | cloudflare_workers"
         )

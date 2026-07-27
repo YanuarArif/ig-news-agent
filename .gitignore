@@ -48,3 +48,6 @@ docker-compose.override.yml
 
 # Database migrations (alembic versions are committed, but not the env)
 migrations/versions/
+
+# Cloudflare Workers Ai
+src/workers/cf-image-gen/node_modules

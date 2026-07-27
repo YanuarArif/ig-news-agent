@@ -487,11 +487,116 @@ Kalau nanti mau pindah dari Stability AI ke provider lain (Replicate/Flux, DALL-
 2. Daftarkan di `image_gen_factory.py`
 3. **Tidak perlu ubah `compositor.py`** — pola factory sama seperti publisher
 
-### Biaya & Transparansi
-- **Biaya**: tiap panggilan LLM (summary + caption) dan image generation (non-mock) kena biaya per call. Untuk 5-10 post/hari, hitung estimasi biaya bulanan sebelum switch dari `mock` ke provider asli.
-- **Transparansi**: watermark "Ilustrasi AI" di infografis **jangan dihapus** — melindungi dari tuduhan menyebarkan gambar asli kejadian yang sebenarnya bukan foto sungguhan.
+---
+
+## ☁️ Cloudflare Workers AI Image Generation (Free Tier)
+
+### Mengapa Cloudflare Workers AI?
+- **Gratis**: 10.000 neurons/hari (~130 gambar flux-1-schnell)
+- **Cepat**: Edge network global (~50ms latency di Asia)
+- **Tidak perlu GPU**: Serverless, auto-scale
+- **Integrasi native**: Python client via HTTP ke deployed worker
+
+### Arsitektur
+
+```
+Python App                          Cloudflare Edge
+┌─────────────────┐      HTTPS       ┌────────────────────────┐
+│ compositor.py   │ ──────────────▶  │ Worker (cf-image-gen)  │
+│ get_image_gen() │  POST /generate  │ env.AI.run(flux-schnell)│
+└─────────────────┘ ◀──────────────  │ Return JPEG binary     │
+       ▲                                 └────────────────────────┘
+       │                                          │
+       │                    10k neurons/day free  │
+       └──────────────────────────────────────────┘
+```
+
+### 1. Deploy Worker (Satu Kali Saja)
+
+```bash
+cd src/workers/cf-image-gen
+npm install
+npx wrangler login          # Login via browser
+npx wrangler deploy         # Deploy ke Cloudflare
+# Output: https://cf-image-gen.<subdomain>.workers.dev
+```
+
+### 2. Konfigurasi Environment
+
+```bash
+# .env
+IMAGE_GEN_PROVIDER=cloudflare_workers
+CF_WORKERS_AI_ENDPOINT=https://cf-image-gen.your-subdomain.workers.dev
+```
+
+### 3. Test Endpoint
+
+```bash
+# Health check
+curl https://cf-image-gen.your-subdomain.workers.dev/health
+# {"status":"ok","model":"@cf/black-forest-labs/flux-1-schnell"}
+
+# Generate image
+curl -X POST https://cf-image-gen.your-subdomain.workers.dev/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"breaking news urgent red background"}' \
+  --output test.jpg
+# Returns valid JPEG (~400-500KB)
+```
+
+### 4. Model yang Digunakan
+
+**Default**: `@cf/black-forest-labs/flux-1-schnell` (optimal free tier)
+
+| Model | Neurons/gambar | Gambar/hari gratis | Keunggulan |
+|-------|----------------|-------------------|------------|
+| **flux-1-schnell** ⭐ | ~77 | **~130** | Cepat, kualitas bagus, balance |
+| flux-2-klein-4b | ~500 | ~20 | Ultra-cepat |
+| flux-2-dev | ~1.500+ | ~6 | Kualitas tinggi, mahal |
+
+Ganti model di `src/workers/cf-image-gen/index.js` line 50:
+```javascript
+const response = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { ... });
+```
+
+### 5. Safety & Guardrails
+
+Worker otomatis menambahkan safety suffix ke setiap prompt:
+```
+", abstract symbolic illustration, no realistic human faces, no specific real people, editorial illustration style, news infographic background"
+```
+
+Ini mencegah generate wajah orang nyata/tokoh publik — **wajib untuk konten berita**.
+
+### 6. Quota Handling
+
+Python client (`cloudflare_workers_gen.py`) cek quota otomatis:
+- Call `/health` sebelum generate
+- Cek header `x-ratelimit-remaining` dari response
+- Raise `RuntimeError` kalau quota habis → pipeline bisa fallback ke `mock` atau stop graceful
+
+### 7. Monitoring
+
+```bash
+# Real-time logs
+npx wrangler tail
+
+# Dashboard
+https://dash.cloudflare.com/?to=/:account/ai/workers-ai
+# Lihat: Neurons used, Requests, Errors, Latency
+```
+
+### 8. Fallback ke Mock (Development Offline)
+
+```bash
+# .env
+IMAGE_GEN_PROVIDER=mock
+```
+Menghasilkan gradient solid per kategori — **gratis, offline, instant**.
 
 ---
+
+### Ganti Provider Image Generation
 
 ## 📄 License
 
