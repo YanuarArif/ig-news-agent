@@ -1,0 +1,65 @@
+# RSS Feed Sources and News API Sources
+# Whitelist of trusted Indonesian news sources
+
+rss_feeds:
+  - name: "Kompas.com"
+    url: "https://www.kompas.com/rss"
+    category: "general"
+    credibility_score: 9
+    enabled: true
+
+  - name: "Detik.com"
+    url: "https://rss.detik.com/index.php/detikcom"
+    category: "general"
+    credibility_score: 9
+    enabled: true
+
+  - name: "CNN Indonesia"
+    url: "https://www.cnnindonesia.com/rss"
+    category: "general"
+    credibility_score: 8
+    enabled: true
+
+  - name: "Tempo.co"
+    url: "https://rss.tempo.co/nasional"
+    category: "general"
+    credibility_score: 9
+    enabled: true
+
+  - name: "Kumparan"
+    url: "https://kumparan.com/rss"
+    category: "entertainment"
+    credibility_score: 7
+    enabled: true
+
+  - name: "Liputan6.com"
+    url: "https://rss.liputan6.com/rss"
+    category: "general"
+    credibility_score: 8
+    enabled: true
+
+news_api_sources:
+  # Optional: NewsAPI.org or similar
+  # Requires separate API key
+  - name: "NewsAPI Indonesia"
+    api_endpoint: "https://newsapi.org/v2/top-headlines"
+    params:
+      country: "id"
+      category: "general"
+    credibility_score: 8
+    enabled: false  # Requires NEWS_API_KEY in .env
+
+# Source filtering rules
+source_filters:
+  min_credibility_score: 6
+  blocked_domains: []
+  allowed_categories:
+    - "general"
+    - "business"
+    - "technology"
+    - "entertainment"
+    - "sports"
+    - "health"
+  blocked_categories:
+    - "politics"  # Requires manual review
+    - "crime"     # Sensitivity check required

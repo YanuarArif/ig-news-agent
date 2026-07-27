@@ -1,0 +1,39 @@
+# Scoring thresholds and weights
+scoring:
+  weights:
+    viral_potential: 0.35
+    credibility: 0.25
+    sensitivity: 0.20
+    cross_verification: 0.20
+
+  thresholds:
+    viral_potential_min: 7
+    credibility_min: 6
+    sensitivity_max: 4
+    cross_verification_min: 3
+    overall_min_score: 6.5
+
+  # Sensitivity flags
+  sensitive_topics:
+    - "SARA"
+    - "terorisme"
+    - "pornografi"
+    - "judi online"
+    - "penipuan investasi"
+    - "hoaks COVID"
+    - "radikalisme"
+
+# LLM settings
+llm:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.3
+  max_tokens: 2000
+  timeout_seconds: 30
+  retry_attempts: 3
+  retry_wait_seconds: 2
+
+# Cross verification
+cross_verification:
+  min_sources: 2
+  search_results_limit: 5
+  similarity_threshold: 0.7

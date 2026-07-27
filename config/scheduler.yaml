@@ -1,0 +1,21 @@
+# Scheduler configuration
+
+scheduler:
+  timezone: "Asia/Jakarta"
+  max_instances: 1
+  misfire_grace_time: 300
+
+# Pipeline schedule (cron expression)
+pipeline_schedule:
+  # Jalankan setiap 2 jam pada jam 00, 02, 04, 06, 08, 10, 12, 14, 16, 18, 20, 22
+  cron: "0 */2 * * *"
+
+# Review bot schedule
+review_bot:
+  check_interval_seconds: 30
+  pending_timeout_hours: 24
+
+# Daily limits
+daily_limits:
+  max_posts_per_day: 10
+  reset_hour: 0  # midnight Jakarta time

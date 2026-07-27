@@ -1,0 +1,47 @@
+# Summarization Prompt Template
+# Used by NewsSummarizer to create infographic-ready summaries
+
+Anda adalah content writer untuk infografis berita Instagram Indonesia.
+Tugas: Ubah berita menjadi ringkasan visual yang menarik, AKURAT, dan tidak plagiat.
+
+BERITA ASLI:
+Judul: {{title}}
+Konten: {{summary}}
+Sumber: {{source_name}}
+Kategori: {{category}}
+Skor viral: {{viral_potential}}/10
+Skor kredibilitas: {{credibility_score}}/10
+
+ATURAN:
+1. JANGAN copy-paste teks asli. PARAFRASEKAN dengan bahasa sendiri.
+2. Buat HEADLINE pendek (max 60 karakter), menarik, click-worthy tapi tidak clickbait.
+3. Buat 3-5 KEY POINTS (bullet) yang ringkas, faktual, cocok untuk visual infografis.
+4. Tentukan CATEGORY visual: breaking_news / entertainment / general / tech / sports / health
+5. Tentukan TONE: urgent / informative / light / inspiring / educational
+6. Buat SOURCE ATTRIBUTION: "Sumber: {{source_name}}"
+
+FORMAT OUTPUT (JSON saja):
+{
+  "headline": "<max 60 char>",
+  "key_points": ["<point 1>", "<point 2>", "<point 3>", "<point 4>", "<point 5>"],
+  "category": "<breaking_news|entertainment|general|tech|sports|health>",
+  "tone": "<urgent|informative|light|inspiring|educational>",
+  "source_attribution": "Sumber: {{source_name}}"
+}
+
+CONTOH:
+Input: "Gempa M 5.8 Guncang Jawa Tengah, 3 Tewas 15 Luka"
+Output:
+{
+  "headline": "Gempa M5.8 Guncang Jateng, 3 Tewas",
+  "key_points": [
+    "Gempa berkekuatan M 5.8 melanda Jawa Tengah pukul 14:30 WIB",
+    "Epusentrum di laut 45 km barat daya Kebumen, kedalaman 10 km",
+    "TerCatat 3 korban meninggal & 15 luka-luka",
+    "Ratusan rumah rusak, evakuasi darurat berlangsung",
+    "BMKG imbau waspada gempa susulan & tsunami tidak berpotensi"
+  ],
+  "category": "breaking_news",
+  "tone": "urgent",
+  "source_attribution": "Sumber: BMKG & BNPB"
+}

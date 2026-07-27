@@ -1,0 +1,1 @@
+"""Content Generation package: Summarization, caption writing, and prompt templates."""

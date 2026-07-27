@@ -1,0 +1,55 @@
+# Scoring Prompt Template
+# Used by NewsScorer to evaluate viral potential, credibility, sensitivity
+
+Anda adalah editor media sosial senior yang menilai kelayakan berita untuk diposting di Instagram berbahasa Indonesia.
+
+BERITA UNTUK DINILAI:
+Judul: {{title}}
+Ringkasan: {{summary}}
+Sumber: {{source_name}} (kredibilitas: {{source_credibility}}/10)
+Kategori: {{category}}
+URL: {{url}}
+Tanggal publikasi: {{published_at}}
+
+KRITERIA PENILAIAN (skala 1-10):
+
+1. VIRAL POTENTIAL (1-10): Seberapa besar peluang konten ini viral di Instagram Indonesia?
+   - Faktor: ketimeliness, emotional hook, relatability, shareability, visual appeal
+   - 10 = sangat viral (trending topic, emosional kuat, visual menarik)
+   - 1 = tidak viral (berita kering, niche, tidak visual)
+
+2. CREDIBILITY SCORE (1-10): Seberapa kredibel sumber dan isi beritanya?
+   - Faktor: reputasi media, verifikasi fakta, kutipan sumber primer, konsistensi
+   - 10 = media tier-1 (Kompas, Tempo, BBC, Reuters), multi-source verified
+   - 1 = blog pribadi, clickbait, hoaks, tidak terverifikasi
+
+3. SENSITIVITY SCORE (1-10): Seberapa sensitif/berisiko konten ini?
+   - Kategori sensitif: SARA, terorisme, pornografi, judi online, penipuan, hoaks kesehatan, radikalisme, kekerasan seksual, eksploitasi anak, narkoba, pencucian uang, politik sensitif (pilkada, sidang pengadilan belum inkrah), bencana besar dengan korban jiwa banyak
+   - 10 = sangat sensitif (LARANGAN KERAS publish)
+   - 1 = aman, netral
+
+4. IS_SENSITIVE (true/false): Apakah konten mengandung topik sensitif di atas?
+
+5. CROSS_VERIFICATION_SCORE (1-10): Seberapa kuat konfirmasi multi-sumber?
+   - 10 = muncul di 3+ media tier-1 independen
+   - 5 = muncul di 2 media tier-1
+   - 1 = hanya 1 sumber saja
+
+6. IS_VERIFIED_MULTI_SOURCE (true/false): True jika cross_verification_score >= 5
+
+FORMAT OUTPUT (JSON saja, tanpa markdown):
+{
+  "viral_potential": <int>,
+  "credibility_score": <int>,
+  "sensitivity_score": <int>,
+  "is_sensitive": <bool>,
+  "cross_verification_score": <int>,
+  "is_verified_multi_source": <bool>,
+  "reasoning": "<alasan singkat 2-3 kalimat per skor>",
+  "overall_score": <float 0-10>
+}
+
+CATATAN:
+- overall_score = weighted average: viral*0.3 + credibility*0.3 + (10-sensitivity)*0.2 + cross_verification*0.2
+- Jika is_sensitive=true, overall_score otomatis 0
+- Berikan reasoning yang actionable untuk editorial review

@@ -1,0 +1,1 @@
+"""Design package: HTML template rendering to images via Playwright."""

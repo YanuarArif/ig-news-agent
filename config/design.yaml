@@ -1,0 +1,27 @@
+# Design rendering configuration
+
+templates:
+  default_variant: "variant_1"
+  variants_dir: "src/design/templates/variants"
+
+rendering:
+  engine: "playwright"
+  browser: "chromium"
+  viewport:
+    width: 1080
+    height: 1350
+  device_scale_factor: 2
+  wait_for_selector: "[data-ready='true']"
+  timeout_ms: 30000
+
+output:
+  format: "png"
+  quality: 95
+  local_output_dir: "mock_output/rendered"
+
+# Template variables defaults
+defaults:
+  brand_name: "IG News"
+  brand_handle: "@ignews"
+  brand_color: "#1a73e8"
+  font_family: "Inter"

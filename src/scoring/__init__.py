@@ -1,0 +1,1 @@
+"""Scoring package: LLM-based news scoring for viral potential, credibility, and sensitivity."""

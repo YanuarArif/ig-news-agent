@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1080, height=1350">
+    <title>{{ headline }}</title>
+    <style>
+        {{ css }}
+        /* General Variant Overrides - uses base styles mostly */
+        .key-point { border-left-color: var(--brand-color); }
+    </style>
+</head>
+<body>
+    <div class="container variant-general" data-ready="true">
+        <header class="brand-header">
+            <div class="brand-logo">
+                <img src="data:image/png;base64,{{ logo_base64 }}" alt="{{ brand_name }}" class="logo-img">
+                <span class="brand-name">{{ brand_name }}</span>
+            </div>
+            <span class="brand-handle">{{ brand_handle }}</span>
+        </header>
+
+        <div class="category-badge category-general">
+            BERITA
+        </div>
+
+        <main class="content">
+            <h1 class="headline">{{ headline }}</h1>
+
+            <ul class="key-points">
+                {% for point in key_points %}
+                <li class="key-point">
+                    <span class="bullet">•</span>
+                    <span class="point-text">{{ point }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <footer class="source-footer">
+                <span class="source-label">{{ source_attribution }}</span>
+                <span class="timestamp">{{ timestamp }}</span>
+            </footer>
+        </main>
+
+        <div class="decor-top"></div>
+        <div class="decor-bottom"></div>
+    </div>
+</body>
+</html>

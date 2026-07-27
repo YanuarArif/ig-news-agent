@@ -1,0 +1,80 @@
+# Logging Configuration
+# Standard Python logging configuration with file and console handlers
+
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+  detailed:
+    format: "%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d | %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+  json:
+    format: '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}'
+    datefmt: "%Y-%m-%d %H:%M:%S"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: standard
+    stream: ext://sys.stdout
+
+  file_all:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: logs/ig_news_agent.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+    encoding: utf-8
+
+  file_error:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: detailed
+    filename: logs/ig_news_agent_error.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+    encoding: utf-8
+
+  file_pipeline:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/pipeline.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 10
+    encoding: utf-8
+
+loggers:
+  src:
+    level: DEBUG
+    handlers: [console, file_all, file_error, file_pipeline]
+    propagate: false
+
+  src.ingestion:
+    level: INFO
+    handlers: [console, file_all, file_pipeline]
+    propagate: false
+
+  src.scoring:
+    level: INFO
+    handlers: [console, file_all, file_pipeline]
+    propagate: false
+
+  src.publishing:
+    level: INFO
+    handlers: [console, file_all, file_pipeline]
+    propagate: false
+
+  src.scheduler:
+    level: INFO
+    handlers: [console, file_all, file_pipeline]
+    propagate: false
+
+root:
+  level: INFO
+  handlers: [console, file_all, file_error]

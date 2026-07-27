@@ -1,0 +1,15 @@
+python-dotenv
+pyyaml
+feedparser
+rapidfuzz
+anthropic
+sqlalchemy
+psycopg2-binary
+alembic
+playwright
+cloudinary
+requests
+apscheduler
+python-telegram-bot
+pytest
+tenacity

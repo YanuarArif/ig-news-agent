@@ -1,0 +1,27 @@
+# Publishing configuration
+
+publishing:
+  # Mode: mock | telegram_preview | instagram
+  mode: "mock"
+
+  # Instagram Graph API settings (only used when mode=instagram)
+  instagram:
+    api_version: "v19.0"
+    media_type: "IMAGE"
+    max_caption_length: 2200
+
+  # Telegram preview settings (used when mode=telegram_preview)
+  telegram_preview:
+    parse_mode: "HTML"
+    disable_notification: false
+
+  # Mock publisher settings
+  mock:
+    output_dir: "mock_output"
+    save_images: false
+
+# Posting rules
+posting_rules:
+  min_interval_minutes: 30
+  max_posts_per_hour: 3
+  skip_sensitive: true
