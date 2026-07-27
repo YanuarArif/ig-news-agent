@@ -20,6 +20,10 @@ logs/*.log
 # Mock output
 mock_output/*.json
 
+# Temp design output
+tmp_design/
+tmp_design/*
+
 # IDE
 .vscode/
 .idea/

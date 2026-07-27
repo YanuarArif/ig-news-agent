@@ -395,6 +395,101 @@ print(f"Reset time: {limiter.get_reset_time()}")
 | `apscheduler` | Job scheduling |
 | `sqlalchemy` + `psycopg2` | Database ORM |
 | `tenacity` | Retry decorator |
+| `pillow` | Image processing (mock image generation) |
+
+---
+
+## 🤖 AI Integration (Update Terbaru)
+
+### Fitur AI Baru
+Update ini menambahkan 3 kemampuan AI inti ke pipeline:
+
+| # | Fitur | Deskripsi | File Utama |
+|---|-------|-----------|------------|
+| 1 | **AI Summary Berita** | LLM (Claude) meringkas & memparafrase berita jadi 3-5 poin untuk infografis | `src/content_generation/summarizer.py` |
+| 2 | **AI Caption Instagram** | LLM menulis caption + hashtag berdasarkan ringkasan berita | `src/content_generation/caption_writer.py` |
+| 3 | **AI Desain Infografis** | AI image generation membuat background abstrak per kategori, teks di-overlay via HTML/CSS | `src/design/image_gen/`, `src/design/compositor.py` |
+
+### Arsitektur Desain: Background AI + Teks HTML (Penting)
+AI image generation (Stable Diffusion, DALL-E, Flux) **buruk rendering teks panjang/presisi** di gambar — hasilnya sering typo, huruf aneh, atau tidak terbaca. Solusi:
+
+1. **AI image gen hanya bikin elemen visual**: background abstrak, ilustrasi simbolis, tekstur, gradient sesuai mood berita
+   - Breaking news = merah/urgent
+   - Hiburan = cerah/playful
+   - Umum = biru-abu/netral
+2. **Teks tetap di-render lewat HTML/CSS + Playwright** (seperti arsitektur sebelumnya) — supaya 100% terbaca & konsisten brand
+3. **Guardrail wajib**: prompt image gen diarahkan ke ilustrasi abstrak/simbolis, **JANGAN** prompt yang menghasilkan wajah orang nyata/tokoh publik spesifik — menghindari risiko gambar menyesatkan (mirip deepfake) berbahaya untuk konten berita
+4. **Watermark "Ilustrasi AI" wajib** di pojok infografis — transparansi bahwa background bukan foto asli kejadian
+
+### Folder Baru untuk AI Image Generation
+```
+src/design/
+├── image_prompt_builder.py      # Susun prompt image gen dari kategori berita
+├── image_gen/                   # Image generation providers (polimorfik)
+│   ├── __init__.py
+│   ├── base_image_gen.py        # Interface abstrak (sama pola BasePublisher)
+│   ├── mock_image_gen.py        # Gradient/warna solid lokal (testing, gratis)
+│   ├── stability_client.py      # Implementasi Stability AI API
+│   └── image_gen_factory.py     # Switch via IMAGE_GEN_PROVIDER env
+└── compositor.py                # Gabungkan background AI + teks overlay (HTML/CSS)
+```
+
+### Pipeline AI Baru (Referensi)
+```python
+from src.content_generation.summarizer import NewsSummarizer
+from src.content_generation.caption_writer import CaptionWriter
+from src.design.compositor import build_infographic
+from src.publishing.publisher_factory import get_publisher
+
+summarizer = NewsSummarizer()
+caption_writer = CaptionWriter()
+
+summary = summarizer.summarize(news_title, news_body)
+caption_data = caption_writer.write_caption(summary, source_name)
+image_path = build_infographic(summary, caption_data["source_attribution"])
+
+publisher = get_publisher()
+result = publisher.publish(image_path, caption_data["full_text"])
+```
+
+### Environment Variables Baru
+```bash
+# AI Image Generation
+IMAGE_GEN_PROVIDER=mock          # mock | stability
+STABILITY_API_KEY=               # Untuk provider stability (production)
+```
+
+### Verifikasi AI Integration
+```bash
+# 1. Install dependencies baru
+pip install -r requirements.txt
+
+# 2. Smoke test summarizer (butuh ANTHROPIC_API_KEY asli di .env)
+python -c "
+from src.content_generation.summarizer import NewsSummarizer
+s = NewsSummarizer()
+print(s.summarize('Judul contoh', 'Isi berita contoh untuk testing...'))
+"
+
+# 3. Smoke test image gen mock (TIDAK butuh API key)
+python -c "
+from src.design.image_gen.image_gen_factory import get_image_gen
+gen = get_image_gen()  # default IMAGE_GEN_PROVIDER=mock
+gen.generate('breaking_news test', 'tmp_design/test.jpg')
+print('Generated:', 'tmp_design/test.jpg exists')
+"
+# Konfirmasi file tmp_design/test.jpg muncul (gradient warna sesuai kategori)
+```
+
+### Ganti Provider Image Generation
+Kalau nanti mau pindah dari Stability AI ke provider lain (Replicate/Flux, DALL-E):
+1. Buat class baru extend `BaseImageGen`
+2. Daftarkan di `image_gen_factory.py`
+3. **Tidak perlu ubah `compositor.py`** — pola factory sama seperti publisher
+
+### Biaya & Transparansi
+- **Biaya**: tiap panggilan LLM (summary + caption) dan image generation (non-mock) kena biaya per call. Untuk 5-10 post/hari, hitung estimasi biaya bulanan sebelum switch dari `mock` ke provider asli.
+- **Transparansi**: watermark "Ilustrasi AI" di infografis **jangan dihapus** — melindungi dari tuduhan menyebarkan gambar asli kejadian yang sebenarnya bukan foto sungguhan.
 
 ---
 

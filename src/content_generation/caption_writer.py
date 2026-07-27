@@ -1,67 +1,49 @@
-"""Generate Instagram captions with hashtags from summarized news.
+"""Menulis caption Instagram + hashtag berdasarkan ringkasan berita,
+menggunakan Claude API."""
 
-Creates engaging captions optimized for Instagram with relevant
-hashtags, call-to-action, and source attribution.
-"""
+import json
+import logging
+from pathlib import Path
 
-from dataclasses import dataclass
-from typing import Optional
+from src.scoring.llm_client import LLMClient
 
-from config.settings import get_settings
-from src.content_generation.prompts import load_prompt
-from src.scoring.llm_client import get_llm_client, LLMClient
-
-
-@dataclass
-class CaptionResult:
-    """Generated caption with metadata."""
-    caption: str            # Main caption text
-    hashtags: list[str]     # Relevant hashtags (max 30)
-    cta: str                # Call to action
-    full_text: str          # Caption + hashtags + CTA combined
-    character_count: int    # Total character count
-
-    def to_dict(self) -> dict:
-        return {
-            "caption": self.caption,
-            "hashtags": self.hashtags,
-            "cta": self.cta,
-            "full_text": self.full_text,
-            "character_count": self.character_count,
-        }
+logger = logging.getLogger(__name__)
+PROMPT_PATH = Path(__file__).parent / "prompts" / "caption_prompt.txt"
 
 
 class CaptionWriter:
-    """Generate Instagram captions from summarized news."""
+    def __init__(self, llm_client: LLMClient | None = None):
+        self.llm = llm_client or LLMClient()
+        self.system_prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    def __init__(self, llm_client: Optional[LLMClient] = None):
-        self.llm_client = llm_client or get_llm_client()
+    def write_caption(self, summary: dict, source_name: str = "Media Indonesia",
+                      viral_potential: int = 5, credibility_score: int = 5) -> dict:
+        key_points = "; ".join(summary.get("key_points", []))
+        user_prompt = (
+            f"Headline: {summary.get('headline', '')}\n"
+            f"Key Points: {key_points}\n"
+            f"Category: {summary.get('category', 'general')}\n"
+            f"Tone: {summary.get('tone', 'informative')}\n"
+            f"Source: {summary.get('source_attribution', f'Sumber: {source_name}')}\n"
+            f"Viral Score: {viral_potential}/10\n"
+            f"Credibility: {credibility_score}/10"
+        )
+        raw = self.llm.complete(self.system_prompt, user_prompt, max_tokens=400)
+        try:
+            result = json.loads(raw)
+            # Ensure required fields
+            required = ["caption", "hashtags", "cta", "full_text", "character_count"]
+            for field in required:
+                if field not in result:
+                    raise ValueError(f"Missing required field: {field}")
+            return result
+        except json.JSONDecodeError:
+            logger.error("Gagal parse JSON dari LLM: %s", raw)
+            raise
+        except ValueError as e:
+            logger.error("Validasi gagal: %s", e)
+            raise
 
-    def write_caption(self, summary: dict, score_result: dict) -> CaptionResult:
-        """Write caption from summary and scores.
 
-        Args:
-            summary: SummaryResult dict from NewsSummarizer
-            score_result: ScoreResult dict from NewsScorer
-
-        Returns:
-            CaptionResult with caption, hashtags, CTA
-        """
-        raise NotImplementedError
-
-    def _build_prompt(self, summary: dict, score_result: dict) -> str:
-        """Build caption writing prompt from template."""
-        raise NotImplementedError
-
-    def _parse_response(self, response: str, base_caption: str) -> CaptionResult:
-        """Parse LLM response into CaptionResult."""
-        raise NotImplementedError
-
-    def _extract_hashtags(self, text: str) -> list[str]:
-        """Extract hashtags from generated text."""
-        raise NotImplementedError
-
-
-def write_caption(summary: dict, score_result: dict) -> CaptionResult:
-    """Convenience function to generate caption."""
-    raise NotImplementedError
+# Backwards compatibility
+write_instagram_caption = CaptionWriter().write_caption

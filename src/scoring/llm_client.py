@@ -1,99 +1,39 @@
-"""Generic LLM client wrapper for Claude/OpenAI APIs.
+"""Wrapper generic untuk memanggil Claude API. Dipakai bersama oleh
+news_scorer.py, summarizer.py, dan caption_writer.py supaya retry &
+error handling konsisten di satu tempat."""
 
-Provides a unified interface for calling LLM APIs with retry logic,
-rate limiting, and structured response parsing.
-"""
+import os
+import logging
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any, Optional
+import anthropic
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-from config.settings import get_settings
+logger = logging.getLogger(__name__)
 
-
-@dataclass
-class LLMResponse:
-    """Structured LLM response."""
-    content: str
-    model: str
-    usage: Optional[dict] = None
-    raw_response: Optional[Any] = None
+DEFAULT_MODEL = "claude-3-5-sonnet-20241022"  # cek docs.claude.com untuk model terbaru
 
 
-class LLMClient(ABC):
-    """Abstract base class for LLM clients."""
+class LLMClient:
+    """Wrapper Anthropic Claude API dengan retry & rate limit handling."""
 
-    @abstractmethod
-    def complete(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.3,
-        max_tokens: int = 2000,
-    ) -> LLMResponse:
-        """Generate completion from prompt."""
-        raise NotImplementedError
+    def __init__(self, model: str = DEFAULT_MODEL):
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY belum diisi di .env")
+        self.client = anthropic.Anthropic(api_key=api_key)
+        self.model = model
 
-    @abstractmethod
-    def complete_structured(
-        self,
-        prompt: str,
-        schema: dict,
-        system_prompt: Optional[str] = None,
-    ) -> dict:
-        """Generate structured JSON response matching schema."""
-        raise NotImplementedError
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def complete(self, system_prompt: str, user_prompt: str, max_tokens: int = 1024) -> str:
+        """Panggil Claude API dengan system + user prompt, return teks."""
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        return "".join(block.text for block in response.content if block.type == "text")
 
 
-class AnthropicClient(LLMClient):
-    """Anthropic Claude API client."""
-
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize with API key."""
-        raise NotImplementedError
-
-    def complete(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.3,
-        max_tokens: int = 2000,
-    ) -> LLMResponse:
-        raise NotImplementedError
-
-    def complete_structured(
-        self,
-        prompt: str,
-        schema: dict,
-        system_prompt: Optional[str] = None,
-    ) -> dict:
-        raise NotImplementedError
-
-
-class OpenAIClient(LLMClient):
-    """OpenAI GPT API client."""
-
-    def __init__(self, api_key: Optional[str] = None):
-        raise NotImplementedError
-
-    def complete(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.3,
-        max_tokens: int = 2000,
-    ) -> LLMResponse:
-        raise NotImplementedError
-
-    def complete_structured(
-        self,
-        prompt: str,
-        schema: dict,
-        system_prompt: Optional[str] = None,
-    ) -> dict:
-        raise NotImplementedError
-
-
-def get_llm_client(provider: str = "anthropic") -> LLMClient:
-    """Factory function to get configured LLM client."""
-    raise NotImplementedError
+# Backwards compatibility alias
+AnthropicClient = LLMClient
