@@ -88,13 +88,14 @@ def parse_rss_entry(entry: feedparser.FeedParserDict, source_name: str, source_u
     )
 
 
-def fetch_rss_feed(url: str, source_name: str, category: Optional[str] = None) -> list[RawNewsItem]:
+def fetch_rss_feed(url: str, source_name: str, category: Optional[str] = None, max_entries: int = 50) -> list[RawNewsItem]:
     """Fetch and parse a single RSS feed URL.
 
     Args:
         url: RSS feed URL
         source_name: Human-readable source name
         category: Optional category override
+        max_entries: Maximum number of entries to fetch (default 50)
 
     Returns:
         List of RawNewsItem objects
@@ -105,7 +106,8 @@ def fetch_rss_feed(url: str, source_name: str, category: Optional[str] = None) -
         print(f"Warning: Feed parsing issue for {url}: {feed.bozo_exception}")
     
     items = []
-    for entry in feed.entries:
+    # Limit entries to max_entries
+    for entry in feed.entries[:max_entries]:
         try:
             item = parse_rss_entry(entry, source_name, url)
             if category:
@@ -118,7 +120,7 @@ def fetch_rss_feed(url: str, source_name: str, category: Optional[str] = None) -
     return items
 
 
-def fetch_all_sources() -> list[RawNewsItem]:
+def fetch_all_sources(max_entries: int = 50) -> list[RawNewsItem]:
     """Fetch news from all enabled RSS sources in config/sources.yaml.
 
     Returns:
@@ -142,22 +144,24 @@ def fetch_all_sources() -> list[RawNewsItem]:
         url = source.get('url')
         name = source.get('name', url)
         category = source.get('category')
+        # Get max_entries from source config, default to 50
+        source_max_entries = source.get('max_entries', 50)
         if url:
-            items = fetch_rss_feed(url, name, category)
+            items = fetch_rss_feed(url, name, category, max_entries=source_max_entries)
             all_items.extend(items)
             print(f"Fetched {len(items)} items from {name}")
     
     return all_items
 
 
-def fetch_rss_feeds(sources: list = None) -> list[dict]:
+def fetch_rss_feeds(sources: list = None, max_entries: int = 50) -> list[dict]:
     """Fetch RSS feeds and return as list of dicts (pipeline compatible)."""
     if sources:
         all_items = []
         for src in sources:
-            items = fetch_rss_feed(src.get('url', ''), src.get('name', ''), src.get('category'))
+            items = fetch_rss_feed(src.get('url', ''), src.get('name', ''), src.get('category'), max_entries=max_entries)
             all_items.extend(items)
         return [item.to_dict() for item in all_items]
     else:
-        items = fetch_all_sources()
+        items = fetch_all_sources(max_entries=max_entries)
         return [item.to_dict() for item in items]

@@ -97,7 +97,7 @@ def render_infographic(
     # 3. Replace placeholders
     template_html = template_html.replace("{{headline}}", headline)
     template_html = template_html.replace("{{points}}", points_html)
-    template_html = template_html.replace("{{source_attribution}}", source_attribution)
+    template_html = template_html.replace("{{ source_attribution }}", source_attribution)
     template_html = template_html.replace("{{watermark_text}}", watermark_text)
     template_html = template_html.replace("{{background_image}}", bg_uri)
     template_html = template_html.replace("{{category}}", category)

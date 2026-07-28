@@ -29,12 +29,15 @@ def build_infographic(summary: dict, source_attribution: str) -> str:
     image_gen.generate(prompt, str(background_path))
 
     # 2. Render template HTML/CSS dengan background itu + teks overlay
+    # Handle missing source_attribution gracefully
+    final_source = source_attribution or summary.get("source_attribution", "") or f"Sumber: {summary.get('source_name', 'Media Indonesia')}"
+    
     final_path = render_infographic(
         headline=summary["headline"],
-        points=summary["points"],
+        points=summary.get("key_points", summary.get("points", [])),
         category=category,
         background_image_path=str(background_path),
-        source_attribution=source_attribution,
+        source_attribution=final_source,
         watermark_text="Ilustrasi AI",  # transparansi wajib untuk konten berita
     )
 

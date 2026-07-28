@@ -4,6 +4,7 @@ supaya retry & error handling konsisten di satu tempat."""
 
 import os
 import logging
+from typing import Optional, Dict, Any
 
 from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -29,18 +30,59 @@ class LLMClient:
         self.model = model
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def complete(self, system_prompt: str, user_prompt: str, max_tokens: int = 1024) -> str:
+    def complete(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = 1024,
+        response_format: Optional[Dict[str, str]] = None,
+        temperature: float = 0.3,
+    ) -> str:
         """Panggil Nemotron API dengan system + user prompt, return teks."""
         response = self.client.chat.completions.create(
             model=self.model,
             max_tokens=max_tokens,
-            temperature=0.3,
+            temperature=temperature,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
+            response_format=response_format or {"type": "text"},
         )
         return response.choices[0].message.content or ""
+
+    def complete_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = 1024,
+        temperature: float = 0.3,
+    ) -> str:
+        """Panggil LLM dengan response_format json_object (enforced JSON)."""
+        return self.complete(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            max_tokens=max_tokens,
+            response_format={"type": "json_object"},
+            temperature=temperature,
+        )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def complete_batch(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = 1500,
+        temperature: float = 0.2,
+    ) -> str:
+        """Batch version with higher token limit, returns JSON array."""
+        return self.complete(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            max_tokens=max_tokens,
+            response_format={"type": "json_object"},
+            temperature=temperature,
+        )
 
 
 # Backwards compatibility alias

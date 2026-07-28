@@ -6,10 +6,17 @@
     <title>{{ headline }}</title>
     <style>
         {{ css }}
-    </style>
+        /* Technology Variant Overrides */
+        .category-tech { background: #f3e5f5; color: #6a1b9a; }
+        .container.variant-tech .decor-top,
+        .container.variant-tech .decor-bottom {
+            background: linear-gradient(90deg, var(--accent-purple), var(--brand-color));
+        }
+        .key-point { border-left-color: var(--accent-purple); }
+        .bullet { color: var(--accent-purple); }
 </head>
 <body style="background-image: url('{{ background_image }}'); background-size: cover; background-position: center; background-repeat: no-repeat;">
-    <div class="container" data-ready="true">
+    <div class="container variant-tech" data-ready="true">
         <!-- Brand Header -->
         <header class="brand-header">
             <div class="brand-logo">
@@ -20,8 +27,8 @@
         </header>
 
         <!-- Category Badge -->
-        <div class="category-badge category-{{ category }}">
-            {{ category_label }}
+        <div class="category-badge category-tech">
+            TEKNOLOGI
         </div>
 
         <!-- Main Headline -->
@@ -45,12 +52,12 @@
             </footer>
         </main>
 
-        <!-- Watermark -->
-        <div class="watermark">{{ watermark_text }}</div>
-
         <!-- Decorative Elements -->
         <div class="decor-top"></div>
         <div class="decor-bottom"></div>
+        
+        <!-- Watermark -->
+        <div class="watermark">{{ watermark_text }}</div>
     </div>
 </body>
 </html>

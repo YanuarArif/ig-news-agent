@@ -147,7 +147,7 @@ def run_pipeline():
         try:
             summary = summarizer.summarize(
                 news_title=item["title"],
-                news_body=item["body"],
+                news_body=item.get("summary", item.get("body", "")),
                 source_name=item.get("source_name", "Unknown"),
                 category=item.get("category", "general"),
                 viral_potential=item["score"].get("viral_potential", 5),
