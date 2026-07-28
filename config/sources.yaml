@@ -2,38 +2,50 @@
 # Whitelist of trusted Indonesian news sources
 
 rss_feeds:
-  - name: "Kompas.com"
-    url: "https://www.kompas.com/rss"
-    category: "general"
-    credibility_score: 9
-    enabled: true
-
-  - name: "Detik.com"
-    url: "https://rss.detik.com/index.php/detikcom"
-    category: "general"
-    credibility_score: 9
-    enabled: true
-
   - name: "CNN Indonesia"
     url: "https://www.cnnindonesia.com/rss"
     category: "general"
     credibility_score: 8
     enabled: true
 
-  - name: "Tempo.co"
-    url: "https://rss.tempo.co/nasional"
+  - name: "CNN Indonesia Nasional"
+    url: "https://www.cnnindonesia.com/nasional/rss"
     category: "general"
-    credibility_score: 9
+    credibility_score: 8
     enabled: true
 
-  - name: "Kumparan"
-    url: "https://kumparan.com/rss"
+  - name: "CNN Indonesia Teknologi"
+    url: "https://www.cnnindonesia.com/teknologi/rss"
+    category: "technology"
+    credibility_score: 8
+    enabled: true
+
+  - name: "CNN Indonesia Hiburan"
+    url: "https://www.cnnindonesia.com/hiburan/rss"
     category: "entertainment"
     credibility_score: 7
     enabled: true
 
-  - name: "Liputan6.com"
-    url: "https://rss.liputan6.com/rss"
+  - name: "Antara News"
+    url: "https://www.antaranews.com/rss/terkini.xml"
+    category: "general"
+    credibility_score: 9
+    enabled: true
+
+  - name: "Tempo Bisnis"
+    url: "https://rss.tempo.co/bisnis"
+    category: "business"
+    credibility_score: 8
+    enabled: true
+
+  - name: "Tempo Tekno"
+    url: "https://rss.tempo.co/tekno"
+    category: "technology"
+    credibility_score: 8
+    enabled: true
+
+  - name: "Tempo English"
+    url: "https://rss.tempo.co/english"
     category: "general"
     credibility_score: 8
     enabled: true

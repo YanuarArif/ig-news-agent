@@ -4,12 +4,17 @@ Evaluates news items for viral potential, credibility, sensitivity,
 and cross-source verification. Returns structured score results.
 """
 
+import json
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from config.settings import get_settings
-from src.content_generation.prompts import load_prompt
-from src.scoring.llm_client import get_llm_client, LLMClient
+from src.scoring.llm_client import LLMClient
+from src.scoring.sensitivity_guard import check_sensitivity
+from src.scoring.cross_verification import check_cross_verification
+from src.scoring.llm_client import LLMClient
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -24,9 +29,13 @@ class ScoreResult:
     reasoning: str                # LLM reasoning for scores
     overall_score: float          # Weighted composite score
 
-    def passes_threshold(self) -> bool:
+    def passes_threshold(self, viral_thresh: int = 7, cred_thresh: int = 6) -> bool:
         """Check if item passes minimum thresholds for publishing."""
-        raise NotImplementedError
+        return (
+            self.viral_potential >= viral_thresh and
+            self.credibility_score >= cred_thresh and
+            not self.is_sensitive
+        )
 
     def to_dict(self) -> dict:
         """Convert to dictionary for storage."""
@@ -47,7 +56,7 @@ class NewsScorer:
 
     def __init__(self, llm_client: Optional[LLMClient] = None):
         """Initialize with optional custom LLM client."""
-        self.llm_client = llm_client or get_llm_client()
+        self.llm_client = llm_client or LLMClient()
 
     def score_news(self, item: dict) -> ScoreResult:
         """Score a single news item.
@@ -58,21 +67,110 @@ class NewsScorer:
         Returns:
             ScoreResult with all scores and reasoning
         """
-        raise NotImplementedError
+        # 1. Check sensitivity first (fast, rule-based)
+        sensitivity = check_sensitivity(item.get("title", "") + " " + item.get("summary", ""))
+        
+        # 2. Cross-verification check
+        cross_verif = check_cross_verification(
+            item.get("title", ""),
+            item.get("source_name", "")
+        )
+        
+        # 3. LLM scoring for viral potential & credibility
+        llm_scores = self._llm_score(item)
+        
+        # Combine scores
+        viral = llm_scores.get("viral_potential", 5)
+        cred = llm_scores.get("credibility_score", 5)
+        
+        # Weighted overall score
+        overall = (
+            viral * 0.35 +
+            cred * 0.25 +
+            (10 - sensitivity.sensitivity_score) * 0.20 +  # Lower sensitivity = higher score
+            cross_verif.cross_verification_score * 0.20
+        )
+        
+        result = ScoreResult(
+            viral_potential=viral,
+            credibility_score=cred,
+            sensitivity_score=sensitivity.sensitivity_score,
+            is_sensitive=sensitivity.is_sensitive,
+            is_verified_multi_source=cross_verif.is_verified,
+            cross_verification_score=cross_verif.cross_verification_score,
+            reasoning=llm_scores.get("reasoning", ""),
+            overall_score=round(overall, 2)
+        )
+        
+        logger.info(f"Scored '{item.get('title', '')[:50]}': viral={viral}, cred={cred}, sens={sensitivity.sensitivity_score}, overall={overall:.1f}")
+        return result
 
     def score_batch(self, items: list[dict]) -> list[ScoreResult]:
         """Score multiple news items."""
-        raise NotImplementedError
+        return [self.score_news(item) for item in items]
 
     def _build_prompt(self, item: dict) -> str:
         """Build scoring prompt from template and item data."""
-        raise NotImplementedError
+        return f"""
+Analyze this news item for Instagram publishing potential:
+
+Title: {item.get('title', '')}
+Summary: {item.get('summary', '')}
+Source: {item.get('source_name', 'Unknown')}
+Category: {item.get('category', 'general')}
+
+Score each dimension 1-10:
+
+1. VIRAL_POTENTIAL: How likely to go viral on Instagram (visual appeal, emotional hook, shareability)
+2. CREDIBILITY: Source reputation, factual accuracy, journalistic quality
+3. REASONING: Brief explanation for scores
+
+Output ONLY JSON:
+{{"viral_potential": N, "credibility_score": N, "reasoning": "..."}}
+"""
+
+    def _llm_score(self, item: dict) -> dict:
+        """Get scores from LLM."""
+        prompt = self._build_prompt(item)
+        system_prompt = "You are an expert social media editor scoring news for Instagram. Be objective and strict. Output ONLY valid JSON."
+        
+        try:
+            response = self.llm_client.complete(system_prompt, prompt, max_tokens=300)
+            # Try to extract JSON from response
+            import re
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                return json.loads(json_str)
+            else:
+                # Try direct parse
+                return json.loads(response)
+        except Exception as e:
+            logger.error(f"LLM scoring failed: {e}")
+            # Fallback scores
+            return {"viral_potential": 5, "credibility_score": 5, "reasoning": "LLM failed, using defaults"}
 
     def _parse_response(self, response: str) -> ScoreResult:
         """Parse LLM response into ScoreResult."""
-        raise NotImplementedError
+        data = json.loads(response)
+        return ScoreResult(
+            viral_potential=data.get("viral_potential", 5),
+            credibility_score=data.get("credibility_score", 5),
+            sensitivity_score=0,
+            is_sensitive=False,
+            is_verified_multi_source=False,
+            cross_verification_score=0,
+            reasoning=data.get("reasoning", ""),
+            overall_score=0.0,
+        )
 
+
+# Convenience function
+_scorer_instance = None
 
 def score_news(item: dict) -> ScoreResult:
     """Convenience function to score a single news item."""
-    raise NotImplementedError
+    global _scorer_instance
+    if _scorer_instance is None:
+        _scorer_instance = NewsScorer()
+    return _scorer_instance.score_news(item)

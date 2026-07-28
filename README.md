@@ -65,13 +65,15 @@ cp .env.example .env
 ### 4. Jalankan Pipeline (Mode Testing Mock)
 
 ```bash
-# Jalankan satu siklus pipeline penuh
-python scripts/run_pipeline_once.py
+# Jalankan satu siklus pipeline penuh (MUST run as module)
+python -m scripts.run_pipeline_once
 
 # Cek hasil mock output
 ls mock_output/
 cat mock_output/*.json
 ```
+
+> **⚠️ Penting**: Selalu jalankan `python -m scripts.run_pipeline_once` (bukan `python scripts/run_pipeline_once.py`) agar path import `src/` berfungsi dengan benar.
 
 ---
 
@@ -140,7 +142,7 @@ ig-news-agent/
 │   │
 │   ├── scoring/             # Modul scoring & validasi LLM
 │   │   ├── __init__.py
-│   │   ├── llm_client.py        # Wrapper generic Claude/OpenAI API (retry, rate limit)
+│   │   ├── llm_client.py        # Wrapper NVIDIA Nemotron (OpenAI-compatible) + retry/rate limit
 │   │   ├── news_scorer.py       # score_news() → ScoreResult (viral, credibility, sensitive, verified)
 │   │   ├── sensitivity_guard.py # Cek kategori sensitif (SARA, kematian, bencana, politik belum inkrah)
 │   │   └── cross_verification.py # Cek berita muncul di >1 sumber kredibel
@@ -162,8 +164,8 @@ ig-news-agent/
 │   │   │   ├── style.css        # Styling CSS
 │   │   │   └── variants/        # Varian per kategori berita
 │   │   │       ├── breaking_news.html
-│   │   │       ├── entertainment.html
-│   │   │       └── general.html
+│   │   │   ├── entertainment.html
+│   │   │   └── general.html
 │   │   └── assets/
 │   │       ├── fonts/           # Font custom
 │   │       └── logo.png         # Logo brand
@@ -228,9 +230,9 @@ ig-news-agent/
 
 Lihat `.env.example` untuk template. Berikut penjelasan tiap variable:
 
-### LLM (Anthropic Claude)
+### LLM (NVIDIA Nemotron via build.nvidia.com)
 ```bash
-ANTHROPIC_API_KEY=              # API key Anthropic (untuk scoring & content generation)
+NVIDIA_API_KEY=               # API key NVIDIA Nemotron (untuk scoring & content generation)
 ```
 
 ### Database (PostgreSQL/Supabase)
@@ -273,6 +275,13 @@ REVIEW_MODE=manual              # manual | auto (skip review jika auto)
 PUBLISH_MODE=mock               # mock | telegram_preview | instagram
 ```
 
+### AI Image Generation
+```bash
+IMAGE_GEN_PROVIDER=cloudflare_workers   # mock | cloudflare_workers | stability
+CF_WORKERS_AI_ENDPOINT=https://cf-image-gen.your-subdomain.workers.dev
+STABILITY_API_KEY=                        # Untuk provider stability (production)
+```
+
 ---
 
 ## 🧪 Testing & Development
@@ -301,6 +310,20 @@ print('Result:', result)
 ```
 
 File JSON akan muncul di `mock_output/` berisi metadata lengkap.
+
+### Run Full Pipeline Test
+
+```bash
+# Test end-to-end pipeline (harus run as module)
+python -m scripts.run_pipeline_once
+
+# Output yang diharapkan:
+# [1/8] Fetching RSS feeds...  Fetched 500+ raw items
+# [2/8] Deduplicating...       500+ unique items
+# [3/8] Filtering freshness... 200+ fresh items
+# [4/8] Scoring news items...  Converted 200+ items to dicts for scoring
+# ✓ 'Judul Berita' - viral:8 cred:9
+```
 
 ### Run Unit Tests
 
@@ -347,7 +370,7 @@ docker-compose down
 1. Tambah RSS feed ke `config/sources.yaml`
 2. Implement logic di `src/ingestion/rss_fetcher.py` (sudah ada signature)
 3. Tambah test di `tests/test_deduplicator.py`
-4. Jalankan `python scripts/run_pipeline_once.py` untuk test end-to-end
+4. Jalankan `python -m scripts.run_pipeline_once.py` untuk test end-to-end
 
 ### Debugging Pipeline
 
@@ -356,7 +379,7 @@ docker-compose down
 export LOG_LEVEL=DEBUG  # Linux/macOS
 $env:LOG_LEVEL="DEBUG"  # Windows PowerShell
 
-python scripts/run_pipeline_once.py
+python -m scripts.run_pipeline_once
 ```
 
 ### Cek Rate Limit Status
@@ -388,7 +411,7 @@ print(f"Reset time: {limiter.get_reset_time()}")
 |---------|--------|
 | `feedparser` | Parse RSS feed |
 | `rapidfuzz` | Fuzzy string matching (deduplikasi) |
-| `anthropic` | Claude API client |
+| `openai` | OpenAI-compatible client (NVIDIA Nemotron) |
 | `playwright` | Render HTML → PNG |
 | `cloudinary` | Image upload & hosting |
 | `python-telegram-bot` | Telegram bot API |
@@ -399,14 +422,14 @@ print(f"Reset time: {limiter.get_reset_time()}")
 
 ---
 
-## 🤖 AI Integration (Update Terbaru)
+## 🤖 AI Integration
 
 ### Fitur AI Baru
 Update ini menambahkan 3 kemampuan AI inti ke pipeline:
 
 | # | Fitur | Deskripsi | File Utama |
 |---|-------|-----------|------------|
-| 1 | **AI Summary Berita** | LLM (Claude) meringkas & memparafrase berita jadi 3-5 poin untuk infografis | `src/content_generation/summarizer.py` |
+| 1 | **AI Summary Berita** | LLM (Nemotron) meringkas & memparafrase berita jadi 3-5 poin untuk infografis | `src/content_generation/summarizer.py` |
 | 2 | **AI Caption Instagram** | LLM menulis caption + hashtag berdasarkan ringkasan berita | `src/content_generation/caption_writer.py` |
 | 3 | **AI Desain Infografis** | AI image generation membuat background abstrak per kategori, teks di-overlay via HTML/CSS | `src/design/image_gen/`, `src/design/compositor.py` |
 
@@ -421,67 +444,191 @@ AI image generation (Stable Diffusion, DALL-E, Flux) **buruk rendering teks panj
 3. **Guardrail wajib**: prompt image gen diarahkan ke ilustrasi abstrak/simbolis, **JANGAN** prompt yang menghasilkan wajah orang nyata/tokoh publik spesifik — menghindari risiko gambar menyesatkan (mirip deepfake) berbahaya untuk konten berita
 4. **Watermark "Ilustrasi AI" wajib** di pojok infografis — transparansi bahwa background bukan foto asli kejadian
 
-### Folder Baru untuk AI Image Generation
+---
+
+## ☁️ Cloudflare Workers AI Image Generation (Free Tier)
+
+### Mengapa Cloudflare Workers AI?
+- **Gratis**: 10.000 neurons/hari (~130 gambar flux-1-schnell)
+- **Cepat**: Edge network global (~50ms latency di Asia)
+- **Tidak perlu GPU**: Serverless, auto-scale
+- **Integrasi native**: Python client via HTTP ke deployed worker
+
+### Arsitektur
+
 ```
-src/design/
-├── image_prompt_builder.py      # Susun prompt image gen dari kategori berita
-├── image_gen/                   # Image generation providers (polimorfik)
-│   ├── __init__.py
-│   ├── base_image_gen.py        # Interface abstrak (sama pola BasePublisher)
-│   ├── mock_image_gen.py        # Gradient/warna solid lokal (testing, gratis)
-│   ├── stability_client.py      # Implementasi Stability AI API
-│   └── image_gen_factory.py     # Switch via IMAGE_GEN_PROVIDER env
-└── compositor.py                # Gabungkan background AI + teks overlay (HTML/CSS)
-```
-
-### Pipeline AI Baru (Referensi)
-```python
-from src.content_generation.summarizer import NewsSummarizer
-from src.content_generation.caption_writer import CaptionWriter
-from src.design.compositor import build_infographic
-from src.publishing.publisher_factory import get_publisher
-
-summarizer = NewsSummarizer()
-caption_writer = CaptionWriter()
-
-summary = summarizer.summarize(news_title, news_body)
-caption_data = caption_writer.write_caption(summary, source_name)
-image_path = build_infographic(summary, caption_data["source_attribution"])
-
-publisher = get_publisher()
-result = publisher.publish(image_path, caption_data["full_text"])
+Python App                          Cloudflare Edge
+┌─────────────────┐      HTTPS       ┌────────────────────────┐
+│ compositor.py   │ ──────────────▶  │ Worker (cf-image-gen)  │
+│ get_image_gen() │  POST /generate  │ env.AI.run(flux-schnell)│
+└─────────────────┘ ◀──────────────  │ Return JPEG binary     │
+       ▲                                 └────────────────────────┘
+       │                                          │
+       │                    10k neurons/day free  │
+       └──────────────────────────────────────────┘
 ```
 
-### Environment Variables Baru
+### 1. Deploy Worker (Satu Kali Saja)
+
 ```bash
-# AI Image Generation
-IMAGE_GEN_PROVIDER=mock          # mock | stability
-STABILITY_API_KEY=               # Untuk provider stability (production)
+cd src/workers/cf-image-gen
+npm install
+npx wrangler login          # Login via browser
+npx wrangler deploy         # Deploy ke Cloudflare
+# Output: https://cf-image-gen.<subdomain>.workers.dev
 ```
 
-### Verifikasi AI Integration
+### 2. Konfigurasi Environment
+
 ```bash
-# 1. Install dependencies baru
-pip install -r requirements.txt
-
-# 2. Smoke test summarizer (butuh ANTHROPIC_API_KEY asli di .env)
-python -c "
-from src.content_generation.summarizer import NewsSummarizer
-s = NewsSummarizer()
-print(s.summarize('Judul contoh', 'Isi berita contoh untuk testing...'))
-"
-
-# 3. Smoke test image gen mock (TIDAK butuh API key)
-python -c "
-from src.design.image_gen.image_gen_factory import get_image_gen
-gen = get_image_gen()  # default IMAGE_GEN_PROVIDER=mock
-gen.generate('breaking_news test', 'tmp_design/test.jpg')
-print('Generated:', 'tmp_design/test.jpg exists')
-"
-# Konfirmasi file tmp_design/test.jpg muncul (gradient warna sesuai kategori)
+# .env
+IMAGE_GEN_PROVIDER=cloudflare_workers
+CF_WORKERS_AI_ENDPOINT=https://cf-image-gen.your-subdomain.workers.dev
 ```
 
-### Ganti Provider Image Generation
+### 3. Test Endpoint
+
+```bash
+# Health check
+curl https://cf-image-gen.your-subdomain.workers.dev/health
+# {"status":"ok","model":"@cf/black-forest-labs/flux-1-schnell"}
+
+# Generate image
+curl -X POST https://cf-image-gen.your-subdomain.workers.dev/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"breaking news urgent red background"}' \
+  --output test.jpg
+# Returns valid JPEG (~400-500KB)
+```
+
+### 4. Model yang Digunakan
+
+**Default**: `@cf/black-forest-labs/flux-1-schnell` (optimal free tier)
+
+| Model | Neurons/gambar | Gambar/hari gratis | Keunggulan |
+|-------|----------------|-------------------|------------|
+| **flux-1-schnell** ⭐ | ~77 | **~130** | Cepat, kualitas bagus, balance |
+| flux-2-klein-4b | ~500 | ~20 | Ultra-cepat |
+| flux-2-dev | ~1.500+ | ~6 | Kualitas tinggi, mahal |
+
+Ganti model di `src/workers/cf-image-gen/index.js` line 50:
+```javascript
+const response = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { ... });
+```
+
+### 5. Safety & Guardrails
+
+Worker otomatis menambahkan safety suffix ke setiap prompt:
+```
+", abstract symbolic illustration, no realistic human faces, no specific real people, editorial illustration style, news infographic background"
+```
+
+Ini mencegah generate wajah orang nyata/tokoh publik — **wajib untuk konten berita**.
+
+### 6. Quota Handling
+
+Python client (`cloudflare_workers_gen.py`) cek quota otomatis:
+- Call `/health` sebelum generate
+- Cek header `x-ratelimit-remaining` dari response
+- Raise `RuntimeError` kalau quota habis → pipeline bisa fallback ke `mock` atau stop graceful
+
+### 7. Monitoring
+
+```bash
+# Real-time logs
+npx wrangler tail
+
+# Dashboard
+https://dash.cloudflare.com/?to=/:account/ai/workers-ai
+# Lihat: Neurons used, Requests, Errors, Latency
+```
+
+### 8. Fallback ke Mock (Development Offline)
+
+```bash
+# .env
+IMAGE_GEN_PROVIDER=mock
+```
+Menghasilkan gradient solid per kategori — **gratis, offline, instant**.
+
+---
+
+## 🔧 Troubleshooting
+
+### RSS Feed Error / 0 Items Fetched
+
+Jika `Fetched 0 raw items` atau RSS gagal:
+
+1. Cek `config/sources.yaml` - pastikan URL RSS masih aktif
+2. Test manual:
+```bash
+python -c "
+import feedparser
+fp = feedparser.parse('https://www.cnnindonesia.com/rss')
+print(f'Entries: {len(fp.entries)}, Status: {fp.status if hasattr(fp, \"status\") else \"N/A\"}, Bozo: {fp.bozo}')
+"
+```
+
+**Working feeds (per Juli 2026)**:
+- CNN Indonesia: `https://www.cnnindonesia.com/rss` (100 entries)
+- CNN Nasional: `https://www.cnnindonesia.com/nasional/rss`
+- Antara News: `https://www.antaranews.com/rss/terkini.xml`
+- Tempo Bisnis: `https://rss.tempo.co/bisnis`
+- Tempo Tekno: `https://rss.tempo.co/tekno`
+
+**Broken feeds (per Juli 2026)**:
+- Kompas: 404
+- Detik: Connection reset
+- Tempo Tekno/English: Cloudflare 522/blocked
+
+### LLM Scoring Fails / JSON Parse Error
+
+Jika LLM scoring gagal:
+1. Pastikan `NVIDIA_API_KEY` valid di `.env`
+2. LLM kadang return malformed JSON — sudah ditangani dengan regex fallback di `_llm_score()`
+3. Jika persistent, check NVIDIA API status
+
+### Import Error: No module named 'src'
+
+Jalankan **selalu sebagai module**:
+```bash
+# ✅ Benar
+python -m scripts.run_pipeline_once
+
+# ❌ Salah
+python scripts/run_pipeline_once.py
+```
+
+### Pipeline Stuck at Scoring
+
+Jika pipeline macet di scoring lama:
+1. NVIDIA API mungkin rate limit (503 Service Unavailable)
+4. LLM kadang timeout — retry otomatis via `tenacity`
+5. Gunakan `IMAGE_GEN_PROVIDER=mock` untuk testing cepat tanpa LLM
+
+---
+
+## 📄 License
+
+MIT License — bebas digunakan, dimodifikasi, dan didistribusikan.
+
+---
+
+## 🤝 Kontribusi
+
+1. Fork repository
+2. Buat branch fitur (`git checkout -b fitur-baru`)
+3. Commit perubahan (`git commit -am 'Tambah fitur X'`)
+4. Push ke branch (`git push origin fitur-baru`)
+5. Buat Pull Request
+
+---
+
+## 📞 Support & Pertanyaan
+
+Untuk pertanyaan teknis atau issue, buka GitHub Issues atau hubungi maintainer.
+
+**Happy coding! 🚀**
 Kalau nanti mau pindah dari Stability AI ke provider lain (Replicate/Flux, DALL-E):
 1. Buat class baru extend `BaseImageGen`
 2. Daftarkan di `image_gen_factory.py`

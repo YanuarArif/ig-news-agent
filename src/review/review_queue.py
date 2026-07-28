@@ -3,14 +3,13 @@
 Manages pending posts waiting for manual review via Telegram.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Optional, List
 import json
+import logging
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from enum import Enum
 from pathlib import Path
-
-from config.settings import get_settings
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +129,6 @@ class ReviewQueue:
 
     def cleanup_expired(self, max_age_hours: int = 24) -> int:
         """Mark expired pending items."""
-        from datetime import timedelta
         now = datetime.now(timezone.utc)
         count = 0
         for item in self.items:
@@ -144,6 +142,13 @@ class ReviewQueue:
         return count
 
 
+# Global instance
+_review_queue_instance: Optional[ReviewQueue] = None
+
+
 def get_review_queue() -> ReviewQueue:
     """Get global review queue instance."""
-    raise NotImplementedError
+    global _review_queue_instance
+    if _review_queue_instance is None:
+        _review_queue_instance = ReviewQueue()
+    return _review_queue_instance
