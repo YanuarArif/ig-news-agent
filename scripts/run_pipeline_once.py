@@ -136,6 +136,18 @@ def run_pipeline():
     
     logger.info(f"  {len(scored_items)} items passed scoring threshold")
     
+    # Sort by combined viral + credibility score (descending) and take top 2
+    scored_items.sort(
+        key=lambda x: (
+            x["score"].get("viral_potential", 0) + 
+            x["score"].get("credibility_score", 0)
+        ),
+        reverse=True
+    )
+    MAX_POSTS_PER_RUN = 2
+    scored_items = scored_items[:MAX_POSTS_PER_RUN]
+    logger.info(f"  📌 Taking top {MAX_POSTS_PER_RUN} items by viral+credibility score")
+    
     if not scored_items:
         logger.warning("No items passed scoring, exiting")
         return
